@@ -1,0 +1,5 @@
+Subject,Scenario,DL_Test_MAE,DL_Test_RMSE,DL_Test_R2,Best_ML_Model,ML_Test_MAE,ML_Test_RMSE,ML_Test_R2,RMSE_Diff (DL - ML),Winner_by_Test_RMSE
+Mathematics,early,3.4899,4.4397,0.0387,Random Forest Regressor,2.9938,3.7508,0.3139,0.6889,Random Forest Regressor (Day 3 ML)
+Mathematics,late,1.838,2.489,0.6979,Random Forest Regressor,1.2005,2.015,0.802,0.474,Random Forest Regressor (Day 3 ML)
+Portuguese,early,2.0679,2.8165,0.1865,Random Forest Regressor,2.0452,2.8166,0.1865,-0.0001,Keras Neural Network
+Portuguese,late,0.9147,1.3043,0.8255,Linear Regression,0.7651,1.2149,0.8487,0.0894,Linear Regression (Day 3 ML)

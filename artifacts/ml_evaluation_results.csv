@@ -1,0 +1,13 @@
+Subject,Scenario,Scenario_Label,Model,Num_Features,Train_MAE,Train_RMSE,Train_R2,Test_MAE,Test_RMSE,Test_R2
+Mathematics,early,Scenario A (Early: No G1/G2),Linear Regression,30,2.9462,3.8651,0.2888,3.3953,4.1957,0.1415
+Mathematics,early,Scenario A (Early: No G1/G2),Decision Tree Regressor,30,0.0,0.0,1.0,3.6329,4.8379,-0.1414
+Mathematics,early,Scenario A (Early: No G1/G2),Random Forest Regressor,30,1.0875,1.456,0.8991,2.9938,3.7508,0.3139
+Mathematics,late,Scenario B (Late: With G1/G2),Linear Regression,32,1.1645,1.6802,0.8656,1.6467,2.3784,0.7241
+Mathematics,late,Scenario B (Late: With G1/G2),Decision Tree Regressor,32,0.0,0.0,1.0,1.3165,2.5705,0.6778
+Mathematics,late,Scenario B (Late: With G1/G2),Random Forest Regressor,32,0.3363,0.5687,0.9846,1.2005,2.015,0.802
+Portuguese,early,Scenario A (Early: No G1/G2),Linear Regression,30,1.832,2.5392,0.3874,2.1564,2.8618,0.1602
+Portuguese,early,Scenario A (Early: No G1/G2),Decision Tree Regressor,30,0.0,0.0,1.0,2.8615,3.7988,-0.4798
+Portuguese,early,Scenario A (Early: No G1/G2),Random Forest Regressor,30,0.7382,1.0138,0.9024,2.0452,2.8166,0.1865
+Portuguese,late,Scenario B (Late: With G1/G2),Linear Regression,32,0.7952,1.2211,0.8583,0.7651,1.2149,0.8487
+Portuguese,late,Scenario B (Late: With G1/G2),Decision Tree Regressor,32,0.0,0.0,1.0,0.8385,1.6572,0.7184
+Portuguese,late,Scenario B (Late: With G1/G2),Random Forest Regressor,32,0.3049,0.4794,0.9782,0.7452,1.2366,0.8432

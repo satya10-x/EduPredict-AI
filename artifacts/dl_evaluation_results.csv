@@ -1,0 +1,5 @@
+Subject,Scenario,Input_Dim,Epochs_Run,Best_Epoch,Train_MAE,Train_RMSE,Train_R2,Val_MAE,Val_RMSE,Val_R2,Test_MAE,Test_RMSE,Test_R2
+Mathematics,early,56,20,5,3.308,4.3399,0.1571,2.6653,3.8546,-0.0348,3.4899,4.4397,0.0387
+Mathematics,late,58,37,22,0.9739,1.3599,0.9172,1.2652,1.6393,0.8128,1.838,2.489,0.6979
+Portuguese,early,56,29,14,1.677,2.3532,0.4993,1.807,2.3805,0.3217,2.0679,2.8165,0.1865
+Portuguese,late,58,35,20,0.6894,1.0341,0.9033,0.8609,1.1401,0.8444,0.9147,1.3043,0.8255

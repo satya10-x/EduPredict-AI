@@ -1,0 +1,32 @@
+# Data Manipulation and Analysis
+numpy==2.5.5
+pandas==3.1.1
+
+# Data Visualization
+matplotlib==3.11.2
+seaborn==0.13.2
+
+# Machine Learning and Deep Learning (TensorFlow 2.21.0 includes Keras 3.15.1)
+scikit-learn==1.9.1
+tensorflow==2.21.0
+
+# Backend API Server
+fastapi==0.165.0
+uvicorn==0.54.0
+
+# Frontend Web Interface & HTTP Client
+streamlit==1.67.0
+plotly==7.2.0
+requests==2.34.2
+
+# Google Gemini API Client
+google-genai==3.6.1
+
+# Environment Variable Management
+python-dotenv==1.2.4
+
+# Interactive Notebooks for EDA and Model Experiments
+jupyter==1.1.1
+
+# Automated Testing
+pytest==9.2.0

@@ -1,0 +1,43 @@
+# Python Virtual Environments
+venv/
+.venv/
+env/
+
+# Python Cache and Compiled Files
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+
+# Environment Variables & Secrets (NEVER commit real API keys)
+.env
+.env.*
+!.env.example
+
+# Jupyter Notebook Checkpoints
+.ipynb_checkpoints/
+
+# Logs and Temporary Files
+*.log
+*.tmp
+*.bak
+*.swp
+logs/
+.matplotlib/
+
+# macOS System Files
+.DS_Store
+
+# IDE / Editor Settings
+.vscode/
+.idea/
+
+# Redundant hidden backup archive inside UCI zip
+data/raw/.student.zip_old
+
+# Optional: Uncomment below if your dataset or saved models become too large for Git
+# data/*.csv
+# models/*.h5
+# models/*.keras
+# models/*.pkl
