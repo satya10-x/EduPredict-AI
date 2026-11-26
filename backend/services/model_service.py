@@ -1,11 +1,11 @@
-"""Model loading and inference service for Scikit-learn and Keras models."""
+"""Model loading and inference service for Scikit-learn and optional/lazy Keras models."""
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
 import joblib
-import keras
 import numpy as np
 import pandas as pd
 
@@ -18,6 +18,14 @@ from backend.schemas import (
     StudentFeatures,
     SubjectType,
 )
+
+
+class KerasDisabledError(RuntimeError):
+    """Raised when Keras inference is requested while ENABLE_KERAS_MODELS=false."""
+
+
+class KerasUnavailableError(RuntimeError):
+    """Raised when Keras inference is requested but TensorFlow/Keras is not installed."""
 
 
 def classify_grade_band(grade: float) -> str:
@@ -34,7 +42,7 @@ def classify_grade_band(grade: float) -> str:
 
 
 class ModelService:
-    """Loads saved ML pipelines and Keras models read-only and serves predictions."""
+    """Loads saved ML pipelines at startup and lazily loads Keras models only when enabled."""
 
     def __init__(self, project_root: Path | None = None) -> None:
         self.project_root = project_root or Path(__file__).resolve().parent.parent.parent
@@ -46,8 +54,16 @@ class ModelService:
         self.dl_meta: dict[tuple[str, str], dict[str, Any]] = {}
         self.loaded = False
 
+    def is_keras_enabled(self) -> bool:
+        """Return True unless ENABLE_KERAS_MODELS is explicitly disabled."""
+        raw = os.getenv("ENABLE_KERAS_MODELS", "true").strip().lower()
+        return raw not in {"false", "0", "no", "off"}
+
     def load_all(self) -> None:
-        """Load all 4 Scikit-learn pipelines and 4 Keras models + preprocessors."""
+        """
+        Load all 4 Scikit-learn pipelines and metadata JSONs at startup.
+        TensorFlow/Keras is never imported or loaded here (lazy-loaded on demand).
+        """
         if self.loaded:
             return
 
@@ -65,15 +81,36 @@ class ModelService:
         for item in dl_items:
             key = (item["subject"], item["scenario"])
             self.dl_meta[key] = item
-            self.keras_models[key] = keras.models.load_model(self.project_root / item["model_file"])
-            self.keras_preprocessors[key] = joblib.load(self.project_root / item["preprocessor_file"])
 
         self.loaded = True
 
     def ensure_loaded(self) -> None:
-        """Lazy-load models if not loaded via FastAPI lifespan startup."""
+        """Lazy-load ML pipelines and metadata if not loaded via FastAPI lifespan startup."""
         if not self.loaded:
             self.load_all()
+
+    def _ensure_keras_task_loaded(self, key: tuple[str, str]) -> None:
+        """Lazily import Keras and load the requested .keras model + preprocessor on demand."""
+        if not self.is_keras_enabled():
+            raise KerasDisabledError(
+                "Keras neural network predictions are disabled on this server "
+                "(ENABLE_KERAS_MODELS=false). Use model_type='ml' for classical ML predictions."
+            )
+
+        if key in self.keras_models and key in self.keras_preprocessors:
+            return
+
+        try:
+            import keras  # Local lazy import so ML-only deployments never import TensorFlow
+        except ImportError as exc:
+            raise KerasUnavailableError(
+                "TensorFlow/Keras is not installed in this environment. "
+                "Use model_type='ml' for classical ML predictions."
+            ) from exc
+
+        meta = self.dl_meta[key]
+        self.keras_models[key] = keras.models.load_model(self.project_root / meta["model_file"])
+        self.keras_preprocessors[key] = joblib.load(self.project_root / meta["preprocessor_file"])
 
     def _build_input_df(self, student: StudentFeatures, feature_columns: list[str]) -> pd.DataFrame:
         """Build a 1-row DataFrame matching the exact training feature columns."""
@@ -104,6 +141,7 @@ class ModelService:
 
     def _predict_keras(self, subject: SubjectType, scenario: ScenarioType, student: StudentFeatures) -> SingleModelPrediction:
         key = (subject, scenario)
+        self._ensure_keras_task_loaded(key)
         meta = self.dl_meta[key]
         model = self.keras_models[key]
         preprocessor = self.keras_preprocessors[key]
@@ -168,4 +206,3 @@ class ModelService:
                 )
             )
         return tasks
-

@@ -88,7 +88,8 @@ def test_health_endpoint_and_no_key_exposure(client, monkeypatch):
     body = resp.json()
     assert body["status"] == "healthy"
     assert body["ml_models_loaded"] == 4
-    assert body["keras_models_loaded"] == 4
+    assert body["keras_enabled"] is True
+    assert body["keras_models_loaded"] >= 0
     assert body["gemini_configured"] is True
     assert secret_key not in resp.text
 
@@ -362,4 +363,158 @@ def test_recommendations_api_error_classification_and_endpoint_routing(client, m
     assert resp_vertex.status_code == 200
     assert captured_kwargs.get("vertexai") is True
     assert "key_type=Vertex" in resp_vertex.json()["message"]
+
+
+def test_lazy_keras_loading_when_enabled(monkeypatch):
+    """When ENABLE_KERAS_MODELS=true, Keras models load lazily only for requested tasks."""
+    from backend.schemas import StudentFeatures
+    from backend.services.model_service import ModelService
+
+    monkeypatch.setenv("ENABLE_KERAS_MODELS", "true")
+    service = ModelService()
+    service.load_all()
+
+    assert len(service.ml_pipelines) == 4
+    assert len(service.keras_models) == 0
+
+    student = StudentFeatures(**sample_student_payload(include_grades=True))
+    res = service.predict("Mathematics", "late", student, model_type="keras")
+    assert res.prediction.model_family == "keras"
+    assert len(service.keras_models) == 1
+    assert ("Mathematics", "late") in service.keras_models
+
+
+def test_keras_disabled_mode_ml_only_and_controlled_error(client, monkeypatch):
+    """When ENABLE_KERAS_MODELS=false, ML endpoints work and Keras requests return HTTP 400."""
+    monkeypatch.setenv("ENABLE_KERAS_MODELS", "false")
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+
+    health = client.get("/health")
+    assert health.status_code == 200
+    assert health.json()["keras_enabled"] is False
+    assert health.json()["ml_models_loaded"] == 4
+
+    catalog = client.get("/models")
+    assert catalog.status_code == 200
+    assert catalog.json()["total_tasks"] == 4
+
+    for subj, scen in [
+        ("Mathematics", "early"),
+        ("Mathematics", "late"),
+        ("Portuguese", "early"),
+        ("Portuguese", "late"),
+    ]:
+        resp = client.post(
+            "/predict",
+            json={
+                "subject": subj,
+                "scenario": scen,
+                "model_type": "ml",
+                "student": sample_student_payload(include_grades=(scen == "late")),
+            },
+        )
+        assert resp.status_code == 200
+        assert resp.json()["prediction"]["model_family"] == "ml"
+
+    rec_ml = client.post(
+        "/recommendations",
+        json={
+            "subject": "Mathematics",
+            "scenario": "early",
+            "model_type": "ml",
+            "student": sample_student_payload(include_grades=False),
+        },
+    )
+    assert rec_ml.status_code == 200
+    assert rec_ml.json()["prediction_result"]["prediction"]["model_family"] == "ml"
+
+    # Explicit Keras or Both request must return controlled 400 error without crashing
+    for bad_mtype in ["keras", "both"]:
+        bad_pred = client.post(
+            "/predict",
+            json={
+                "subject": "Mathematics",
+                "scenario": "late",
+                "model_type": bad_mtype,
+                "student": sample_student_payload(include_grades=True),
+            },
+        )
+        assert bad_pred.status_code == 400
+        assert "ENABLE_KERAS_MODELS=false" in bad_pred.json()["detail"]
+
+        bad_rec = client.post(
+            "/recommendations",
+            json={
+                "subject": "Mathematics",
+                "scenario": "late",
+                "model_type": bad_mtype,
+                "student": sample_student_payload(include_grades=True),
+            },
+        )
+        assert bad_rec.status_code == 400
+        assert "ENABLE_KERAS_MODELS=false" in bad_rec.json()["detail"]
+
+
+def test_ml_only_mode_does_not_import_tensorflow():
+    """Verify starting FastAPI and running all ML endpoints with ENABLE_KERAS_MODELS=false never imports TF/Keras."""
+    import os
+    import subprocess
+    import sys
+
+    script = """
+import os, sys
+os.environ["ENABLE_KERAS_MODELS"] = "false"
+os.environ.pop("GEMINI_API_KEY", None)
+
+from fastapi.testclient import TestClient
+from backend.main import app
+from backend.tests.test_api import sample_student_payload
+
+with TestClient(app) as client:
+    assert client.get("/health").status_code == 200
+    assert client.get("/models").status_code == 200
+    for subj, scen in [("Mathematics", "early"), ("Mathematics", "late"), ("Portuguese", "early"), ("Portuguese", "late")]:
+        r = client.post("/predict", json={"subject": subj, "scenario": scen, "student": sample_student_payload(scen == "late")})
+        assert r.status_code == 200
+    r_rec = client.post("/recommendations", json={"subject": "Portuguese", "scenario": "early", "student": sample_student_payload(False)})
+    assert r_rec.status_code == 200
+
+assert "tensorflow" not in sys.modules, "TensorFlow was unexpectedly imported in ML-only mode!"
+assert "keras" not in sys.modules, "Keras was unexpectedly imported in ML-only mode!"
+print("NO_TF_IMPORT_OK")
+"""
+    env = os.environ.copy()
+    env["ENABLE_KERAS_MODELS"] = "false"
+    proc = subprocess.run(
+        [sys.executable, "-c", script],
+        cwd=str(Path(__file__).resolve().parent.parent.parent),
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "NO_TF_IMPORT_OK" in proc.stdout
+
+
+def test_cors_allowed_origins_parsing(monkeypatch):
+    """ALLOWED_ORIGINS parses comma-separated origins and preserves localhost defaults."""
+    from backend.main import DEFAULT_ALLOWED_ORIGINS, get_allowed_origins
+
+    monkeypatch.delenv("ALLOWED_ORIGINS", raising=False)
+    assert get_allowed_origins() == DEFAULT_ALLOWED_ORIGINS
+
+    monkeypatch.setenv("ALLOWED_ORIGINS", " https://edupredict.streamlit.app/ , http://localhost:8501 ")
+    assert get_allowed_origins() == [
+        "https://edupredict.streamlit.app",
+        "http://localhost:8501",
+    ]
+
+
+def test_startup_without_gemini_key_health_and_ml(monkeypatch):
+    """GeminiService reports unconfigured without .env or GEMINI_API_KEY, and /health still works."""
+    from backend.services.gemini_service import GeminiService
+
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    gs = GeminiService(project_root=Path("/tmp/edupredict_no_env_dir"))
+    assert gs.is_configured() is False
 

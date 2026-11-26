@@ -1,0 +1,12 @@
+# Lightweight backend dependencies for Render Free Tier (ML-only mode: ENABLE_KERAS_MODELS=false)
+fastapi==0.165.0
+uvicorn==0.54.0
+pydantic==2.14.4
+numpy==2.5.5
+pandas==3.1.1
+scikit-learn==1.9.1
+joblib==1.6.0
+google-genai==3.6.1
+httpx==0.28.1
+python-dotenv==1.2.4
+

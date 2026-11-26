@@ -160,6 +160,7 @@ class HealthResponse(BaseModel):
     status: str
     ml_models_loaded: int
     keras_models_loaded: int
+    keras_enabled: bool = True
     gemini_configured: bool
 
 

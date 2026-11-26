@@ -7,6 +7,7 @@ from backend.schemas import (
     PredictionRequest,
     PredictionResponse,
 )
+from backend.services.model_service import KerasDisabledError, KerasUnavailableError
 
 router = APIRouter(tags=["Predictions"])
 
@@ -49,6 +50,16 @@ def predict_grade(payload: PredictionRequest, request: Request) -> PredictionRes
             student=payload.student,
             model_type=payload.model_type,
         )
+    except KerasDisabledError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    except KerasUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
     except KeyError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
