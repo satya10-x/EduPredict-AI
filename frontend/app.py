@@ -14,9 +14,9 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from frontend.api_client import (
-    DEFAULT_BACKEND_URL,
     check_health,
     fetch_models,
+    get_default_backend_url,
     get_recommendations,
     predict_grade,
 )
@@ -84,7 +84,9 @@ st.markdown(
 def init_session_state() -> None:
     """Initialize Streamlit session_state keys cleanly on first load."""
     if "backend_url" not in st.session_state:
-        st.session_state["backend_url"] = DEFAULT_BACKEND_URL
+        st.session_state["backend_url"] = get_default_backend_url()
+    if "keras_enabled" not in st.session_state:
+        st.session_state["keras_enabled"] = True
     if "student_form" not in st.session_state:
         st.session_state["student_form"] = SAMPLE_STUDENTS["Average Student"].copy()
     if "selected_preset" not in st.session_state:
@@ -249,16 +251,22 @@ def render_sidebar() -> str:
 
         health = check_health(backend_url)
         if health.ok and health.data:
+            keras_enabled = health.data.get("keras_enabled", True)
+            st.session_state["keras_enabled"] = keras_enabled
             st.success("Backend Online")
-            st.caption(
-                f"ML Models: **{health.data.get('ml_models_loaded', 0)}** | "
+            keras_label = (
                 f"Keras Models: **{health.data.get('keras_models_loaded', 0)}**"
+                if keras_enabled
+                else "Mode: **ML-Only**"
+            )
+            st.caption(
+                f"ML Models: **{health.data.get('ml_models_loaded', 0)}** | {keras_label}"
             )
             gemini_ok = health.data.get("gemini_configured", False)
             st.caption(f"Gemini API: **{'Configured' if gemini_ok else 'Not Configured'}**")
         else:
             st.error("Backend Offline")
-            st.caption("Start backend: `uvicorn backend.main:app --reload`")
+            st.caption(health.error or "Start backend: `uvicorn backend.main:app --reload`")
 
     return page
 
@@ -284,13 +292,18 @@ def render_overview_page(backend_url: str) -> None:
     col2.metric("UCI Portuguese Records", "649", "33 Attributes")
     col3.metric("Prediction Scenarios", "4 Tasks", "Early & Late")
     if health.ok and health.data:
+        mode_note = (
+            f"{health.data['ml_models_loaded']} ML + {health.data['keras_models_loaded']} Keras"
+            if health.data.get("keras_enabled", True)
+            else f"{health.data['ml_models_loaded']} ML (ML-Only Mode)"
+        )
         col4.metric(
             "FastAPI Status",
             "Online",
-            f"{health.data['ml_models_loaded']} ML + {health.data['keras_models_loaded']} Keras",
+            mode_note,
         )
     else:
-        col4.metric("FastAPI Status", "Offline", "Start uvicorn on port 8000")
+        col4.metric("FastAPI Status", "Offline", "Waking up or not running")
 
     st.markdown("### System Architecture")
     a_col1, a_col2, a_col3 = st.columns(3)
@@ -416,6 +429,12 @@ def render_prediction_page(backend_url: str) -> None:
     st.session_state["subject"] = subject
     st.session_state["scenario"] = scenario
     st.session_state["model_type"] = model_type
+
+    if not st.session_state.get("keras_enabled", True) and model_type in ("keras", "both"):
+        st.info(
+            "Connected backend is running in ML-only mode (`ENABLE_KERAS_MODELS=false`). "
+            "Switch Model Selection to `ml` for classical ML predictions."
+        )
 
     s = st.session_state["student_form"]
 

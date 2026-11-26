@@ -31,5 +31,18 @@ streamlit run frontend/app.py --server.port 8501
 ```
 - Dashboard URL: `http://127.0.0.1:8501`
 
-*(Optional: configure `BACKEND_URL` in `.env` if your FastAPI backend runs on a different host/port. Never expose `GEMINI_API_KEY` in the frontend.)*
+---
+
+## Deploying to Streamlit Community Cloud
+
+1. Push the repository to GitHub (`https://github.com/satya10-x/EduPredict-AI`).
+2. In **Streamlit Community Cloud**, set:
+   - **Repository:** `satya10-x/EduPredict-AI`
+   - **Branch:** `main`
+   - **Main file path:** `frontend/app.py`
+3. In **App Settings → Secrets**, add only the backend URL (never add `GEMINI_API_KEY` to the frontend):
+   ```toml
+   BACKEND_URL = "https://edupredict-ai-vfnx.onrender.com"
+   ```
+4. Once deployed, copy your `https://<your-app>.streamlit.app` URL into your Render backend's `ALLOWED_ORIGINS` environment variable.
 
