@@ -35,6 +35,8 @@
 
 ## Architecture
 
+> See the complete layer-by-layer system diagram and prediction/recommendation data flows in [docs/architecture.md](docs/architecture.md).
+
 ```text
 ┌────────────────────────┐      HTTP (JSON)       ┌───────────────────────────────────┐
 │   Streamlit Frontend   │ ─────────────────────► │         FastAPI Backend           │
@@ -70,6 +72,8 @@
 ├── models/                      # Saved Scikit-learn pipelines (.joblib) & Keras models (.keras)
 ├── artifacts/                   # Evaluation CSVs/JSONs and 14 generated EDA/model charts
 │   └── figures/
+├── docs/                        # System architecture diagrams and technical documentation
+│   └── architecture.md
 ├── .env.example                 # Safe environment variable template
 ├── .gitignore                   # Excludes .env, venv, __pycache__, checkpoints, temp files
 ├── requirements.txt             # Pinned compatible dependencies
